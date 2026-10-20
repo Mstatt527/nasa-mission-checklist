@@ -1,6 +1,6 @@
 # NASA Mission Checklist
 
-A small pre-launch task list for a practice crew. The crew can add a step, put it in a lane, mark how urgent it is, and tick it off. Open items stay in view, and the list is still there after a refresh.
+A small pre launch task list for a practice crew the crew can add a step, put it in a lane, mark how urgent it is, and tick it off. Open items stay in view, and the list is still there after a refresh.
 
 ## Technologies
 
