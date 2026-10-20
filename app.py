@@ -1,63 +1,71 @@
 import streamlit as st
 
-st.set_page_config(page_title="Mission task list", page_icon="🚀", layout="centered")
-
-st.markdown(
-    """
-    <style>
-      .block-container { max-width: 760px; padding-top: 1.6rem; }
-      .board-kicker {
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        font-size: 0.72rem;
-        color: #8eb6ff;
-        margin: 0;
-      }
-      .must { color: #ffb4a2; font-weight: 650; }
-      .normal { color: #9ec1ff; }
-      .later { color: #93a0b0; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-st.markdown(
-    """
-    <p class="board-kicker">Practice crew</p>
-    """,
-    unsafe_allow_html=True,
-)
-st.title("Mission task list")
-st.caption("Each step has a priority. Must means it has to happen before go.")
-
-LANES = [
-    (
-        "Suit and safety",
-        [
-            ("Confirm the suit pressure seal", "Must"),
-            ("Lock gloves and helmet", "Must"),
-            ("Check the oxygen quantity", "Normal"),
-        ],
-    ),
-    (
-        "Comms and weather",
-        [
-            ("Call the ground on the primary radio", "Must"),
-            ("Read the launch weather call", "Must"),
-            ("Confirm the backup comms channel", "Later"),
-        ],
-    ),
-    (
-        "Timeline",
-        [
-            ("Walk the countdown holds", "Must"),
-            ("Record the go / no-go call", "Must"),
-            ("Mark the next hold point", "Normal"),
-        ],
-    ),
+LANES = ["Suit and safety", "Comms and weather", "Timeline"]
+PRIORITY_RANK = {"Must": 0, "Normal": 1, "Later": 2}
+STARTER = [
+    ("suit-seal", "Confirm the suit pressure seal", "Suit and safety", "Must"),
+    ("gloves", "Lock gloves and helmet", "Suit and safety", "Must"),
+    ("oxygen", "Check the oxygen quantity", "Suit and safety", "Normal"),
+    ("radio", "Call the ground on the primary radio", "Comms and weather", "Must"),
+    ("weather", "Read the launch weather call", "Comms and weather", "Must"),
+    ("backup-comms", "Confirm the backup comms channel", "Comms and weather", "Later"),
+    ("holds", "Walk the countdown holds", "Timeline", "Must"),
+    ("gonogo", "Record the go / no-go call", "Timeline", "Must"),
+    ("next-hold", "Mark the next hold point", "Timeline", "Normal"),
 ]
 
-for lane, tasks in LANES:
-    st.subheader(lane)
-    for title, priority in tasks:
-        label = f"{title}  ·  {priority}"
-        st.checkbox(label)
+st.set_page_config(page_title="Mission task list", page_icon="🚀", layout="centered")
+
+if "tasks" not in st.session_state:
+    st.session_state["tasks"] = [
+        {
+            "id": task_id,
+            "title": title,
+            "lane": lane,
+            "priority": priority,
+            "done": False,
+        }
+        for task_id, title, lane, priority in STARTER
+    ]
+
+tasks = st.session_state["tasks"]
+for task in tasks:
+    key = f"done_{task['id']}"
+    if key not in st.session_state:
+        st.session_state[key] = task["done"]
+    task["done"] = bool(st.session_state[key])
+
+done_count = sum(task["done"] for task in tasks)
+st.title("Mission task list")
+st.caption(f"{done_count} of {len(tasks)} complete")
+st.progress(done_count / len(tasks))
+
+view = st.segmented_control(
+    "Show",
+    ["Open", "Done", "All"],
+    default="Open",
+    key="task_filter",
+    label_visibility="collapsed",
+    required=True,
+)
+view = view or "Open"
+
+visible = [
+    task
+    for task in tasks
+    if view == "All"
+    or (view == "Done" and task["done"])
+    or (view == "Open" and not task["done"])
+]
+visible.sort(key=lambda task: (PRIORITY_RANK[task["priority"]], task["title"].lower()))
+
+if not visible:
+    st.info("Nothing in this view.")
+else:
+    for lane in LANES:
+        lane_tasks = [task for task in visible if task["lane"] == lane]
+        if not lane_tasks:
+            continue
+        st.subheader(lane)
+        for task in lane_tasks:
+            st.checkbox(f"{task['title']}  ·  {task['priority']}", key=f"done_{task['id']}")
