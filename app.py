@@ -1,8 +1,11 @@
 import html
+import json
+from pathlib import Path
 from uuid import uuid4
 
 import streamlit as st
 
+DATA_FILE = Path(__file__).with_name("checklist_data.json")
 LANES = ["Suit and safety", "Comms and weather", "Timeline"]
 PRIORITIES = ["Must", "Normal", "Later"]
 PRIORITY_RANK = {"Must": 0, "Normal": 1, "Later": 2}
@@ -65,6 +68,44 @@ def starter_tasks():
     ]
 
 
+def clean_task(raw):
+    if not isinstance(raw, dict):
+        return None
+    title = str(raw.get("title", "")).strip()
+    if not title:
+        return None
+    lane = raw.get("lane")
+    priority = raw.get("priority")
+    return {
+        "id": str(raw.get("id") or uuid4().hex[:8]),
+        "title": title,
+        "lane": lane if lane in LANES else LANES[0],
+        "priority": priority if priority in PRIORITIES else "Normal",
+        "done": bool(raw.get("done")),
+    }
+
+
+def load_tasks():
+    if not DATA_FILE.exists():
+        return starter_tasks()
+    try:
+        data = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return starter_tasks()
+    raw_tasks = data.get("tasks") if isinstance(data, dict) else None
+    if not isinstance(raw_tasks, list):
+        return starter_tasks()
+    tasks = [task for task in (clean_task(item) for item in raw_tasks) if task]
+    return tasks or starter_tasks()
+
+
+def save_tasks(tasks):
+    DATA_FILE.write_text(
+        json.dumps({"tasks": tasks}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
 def ensure_keys(tasks):
     for task in tasks:
         key = f"done_{task['id']}"
@@ -94,7 +135,7 @@ def summary(tasks):
 st.set_page_config(page_title="Mission task list", page_icon="🚀", layout="centered")
 
 if "tasks" not in st.session_state:
-    st.session_state["tasks"] = starter_tasks()
+    st.session_state["tasks"] = load_tasks()
 
 tasks = st.session_state["tasks"]
 ensure_keys(tasks)
@@ -139,6 +180,7 @@ if submitted:
         }
         tasks.append(task)
         st.session_state[f"done_{task['id']}"] = False
+        save_tasks(tasks)
         st.rerun()
     else:
         st.warning("Type a task first.")
@@ -163,6 +205,7 @@ with clear_col:
     ):
         remaining = [task for task in tasks if not task["done"]]
         st.session_state["tasks"] = remaining
+        save_tasks(remaining)
         st.rerun()
 
 view = view or "Open"
@@ -213,6 +256,8 @@ else:
                     ):
                         remaining = [item for item in tasks if item["id"] != task["id"]]
                         st.session_state["tasks"] = remaining
+                        save_tasks(remaining)
                         st.rerun()
 
 pull_done(tasks)
+save_tasks(tasks)
