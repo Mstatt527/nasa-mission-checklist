@@ -20,7 +20,7 @@ streamlit run app.py
 
 Streamlit opens the task list in a browser.
 
-Add a task with a lane and a priority. Must items sit at the top of each lane. Open, Done, and All change which rows you see. Clear completed drops the finished ones. The list is saved in `checklist_data.json` on this computer and is kept out of Git.
+Add a task with a lane and a priority. Must items sit at the top of each lane. Open, Done, and All change which rows you see. Clear completed drops the finished ones. The list is saved in `checklist_data.json` 
 
 ## Layout
 
